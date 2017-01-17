@@ -1,0 +1,248 @@
+#version 430
+
+layout(local_size_x=32, local_size_y=32, local_size_z=1) in;
+
+layout (binding=0, std430) buffer a1
+{
+float vertices[];
+};
+
+layout (binding=1, std430) buffer a2
+{
+float normals[];
+};
+
+layout (binding=2, std430) buffer a3
+{
+float outp[];
+};
+
+layout (binding=3, std430) buffer a4
+{
+	float param[];
+};
+
+layout (binding=4, std430) buffer a5
+{
+		uint count;
+};
+
+layout (binding=5, std430) buffer a6
+{
+	int P[];
+};
+//
+layout (binding=6, std430) buffer a7
+{
+	float G[];
+};
+
+layout (binding=7, std430) buffer a8
+{
+	float phase;
+};
+
+const int P_MASK = 255;
+const int P_SIZE = 256;
+int G_MASK = 15;
+int G_SIZE = 16;
+int G_VECSIZE = 4;
+
+float mix1d(float a, float b, float t)
+{
+	float ba = b - a;
+	float tba = t * ba;
+	float atba = a + tba;
+	return atba;
+}
+
+vec2 mix2d(vec2 a, vec2 b, float t)
+{
+	vec2 ba = b - a;
+	vec2 tba = t * ba;
+	vec2 atba = a + tba;
+	return atba;
+}
+
+vec4 mix3d(vec4 a, vec4 b, float t)
+{
+	vec4 ba = b - a;
+	vec4 tba = t * ba;
+	vec4 atba = a + tba;
+	return atba;
+}
+
+float smooth_glsl(float t)
+{
+	return t*t*t*(t*(t*6.0f-15.0f)+10.0f);
+}
+
+int lattice3d(ivec4 i)
+{
+	return P[i.x + P[i.y + P[i.z]]];
+}
+
+float gradient3d(ivec4 i, vec4 v)
+{
+	int index = (lattice3d(i) & G_MASK) * G_VECSIZE;
+	vec4 g = { G[index + 0], G[index + 1], G[index + 2], 1.0f };
+	return dot(v, g);
+}
+
+vec4 normalized(vec4 v)
+{
+	float d = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+	d = d > 0.0f ? d : 1.0f;
+	vec4 data = { v.x, v.y, v.z, 0.0f };
+	vec4 result = data / d;
+	result.w = 1.0f;
+	return result;
+}
+
+float gradient_noise3d(vec4 position)
+{
+
+	vec4 p = position;
+	vec4 pf = floor(p);
+	ivec4 ip = { int(pf.x), int(pf.y), int(pf.z), 0 };
+	vec4 fp = p - pf;
+	ip &= P_MASK;
+
+	ivec4 I000 = { 0, 0, 0, 0 };
+	ivec4 I001 = { 0, 0, 1, 0 };
+	ivec4 I010 = { 0, 1, 0, 0 };
+	ivec4 I011 = { 0, 1, 1, 0 };
+	ivec4 I100 = { 1, 0, 0, 0 };
+	ivec4 I101 = { 1, 0, 1, 0 };
+	ivec4 I110 = { 1, 1, 0, 0 };
+	ivec4 I111 = { 1, 1, 1, 0 };
+
+	vec4 F000 = { 0.0f, 0.0f, 0.0f, 0.0f };
+	vec4 F001 = { 0.0f, 0.0f, 1.0f, 0.0f };
+	vec4 F010 = { 0.0f, 1.0f, 0.0f, 0.0f };
+	vec4 F011 = { 0.0f, 1.0f, 1.0f, 0.0f };
+	vec4 F100 = { 1.0f, 0.0f, 0.0f, 0.0f };
+	vec4 F101 = { 1.0f, 0.0f, 1.0f, 0.0f };
+	vec4 F110 = { 1.0f, 1.0f, 0.0f, 0.0f };
+	vec4 F111 = { 1.0f, 1.0f, 1.0f, 0.0f };
+
+	float n000 = gradient3d(ip + I000, fp - F000);
+	float n001 = gradient3d(ip + I001, fp - F001);
+
+	float n010 = gradient3d(ip + I010, fp - F010);
+	float n011 = gradient3d(ip + I011, fp - F011);
+
+	float n100 = gradient3d(ip + I100, fp - F100);
+	float n101 = gradient3d(ip + I101, fp - F101);
+
+	float n110 = gradient3d(ip + I110, fp - F110);
+	float n111 = gradient3d(ip + I111, fp - F111);
+
+	vec4 n40 = { n000, n001, n010, n011 };
+	vec4 n41 = { n100, n101, n110, n111 };
+
+	vec4 n4 = mix3d(n40, n41, smooth_glsl(fp.x));
+	vec2 n2 = mix2d(n4.xy, n4.zw, smooth_glsl(fp.y));
+	float n = 0.5f - 0.5f * mix1d(n2.x, n2.y, smooth_glsl(fp.z));
+	return n;
+}
+
+float ridgedmultifractal3d(
+	vec4 position,
+	float frequency,
+	float lacunarity,
+	float increment,
+	float octaves)
+{
+	int i = 0;
+	float fi = 0.0f;
+	float remainder = 0.0f;
+
+	float value = 0.0f;
+	int iterations = int(octaves);
+
+	float threshold = 0.5f;
+	float offset = 1.0f;
+	float weight = 1.0f;
+
+	float signal = abs( (1.0f - 2.0f * gradient_noise3d(position * frequency)) );
+	signal = offset - signal;
+	signal *= signal;
+	value = signal;
+
+	for ( i = 0; i < iterations; i++ )
+	{
+		frequency *= lacunarity;
+		weight = clamp( signal * threshold, 0.0f, 1.0f );
+		signal = abs( (1.0f - 2.0f * gradient_noise3d(position * frequency)) );
+		signal = offset - signal;
+		signal *= signal;
+		signal *= weight;
+		value += signal * pow( lacunarity, -fi * increment );
+
+	}
+	return value;
+}
+
+
+vec4 cross3(vec4 va, vec4 vb)
+{
+	vec4 vc = { va.y*vb.z - va.z*vb.y, va.z*vb.x - va.x*vb.z, va.x*vb.y - va.y*vb.x, 0.0f };
+	return vc;
+}
+
+void main() {
+	int tx = int(gl_GlobalInvocationID.x);
+	int ty = int(gl_GlobalInvocationID.y);
+	int sx = int(gl_WorkGroupSize.x + gl_WorkGroupSize.y);
+
+	int index = ty * sx + tx;
+
+	if(index >= count)
+		return;
+
+	float frequency = param[0];
+	float amplitude = param[1];
+	float lacunarity = param[2];
+	float increment = param[3];
+	float octaves = param[4];
+	float roughness = param[5];
+
+	int ii = 3*index;
+	vec4 position = { vertices[ii], vertices[ii+1], vertices[ii+2], 1.0f };
+
+	vec4 normal = position;
+	position.w = 1.0f;
+
+	roughness /= amplitude;
+	vec4 tmp1 = {phase + 100.0f, phase + 100.0f, phase + 100.0f, 0.0f};
+	vec4 sample_glsl = position + tmp1;
+
+	vec4 dx = { roughness, 0.0f, 0.0f, 1.0f };
+	vec4 dy = { 0.0f, roughness, 0.0f, 1.0f };
+	vec4 dz = { 0.0f, 0.0f, roughness, 1.0f };
+
+	float f0 = ridgedmultifractal3d(sample_glsl, frequency, lacunarity, increment, octaves);
+	float f1 = ridgedmultifractal3d(sample_glsl + dx, frequency, lacunarity, increment, octaves);
+	float f2 = ridgedmultifractal3d(sample_glsl + dy, frequency, lacunarity, increment, octaves);
+	float f3 = ridgedmultifractal3d(sample_glsl + dz, frequency, lacunarity, increment, octaves);
+
+	float displacement = (f0 + f1 + f2 + f3) / 4.0;
+
+	vec4 vertex = position + (amplitude * displacement * normal);
+	vertex.w = 1.0f;
+
+	normal.x -= (f1 - f0);
+	normal.y -= (f2 - f0);
+	normal.z -= (f3 - f0);
+	normal = normalized(normal / roughness);
+
+	int jj = 3*index;
+	outp[jj  ] = vertex.x;
+	outp[jj+1] = vertex.y;
+	outp[jj+2] = vertex.z;
+
+	normals[jj  ] = normal.x;
+	normals[jj+1] = normal.y;
+	normals[jj+2] = normal.z;
+}

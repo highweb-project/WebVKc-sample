@@ -58,64 +58,61 @@ function InitVK() {
         vkDevice = vk.createDevice();
         vkCommandQueue = vkDevice.createCommandQueue();
 
-        fetch('nbody.comp').then(function(response) {
-            return response.text();
-        }).then(function(content) {
-            console.log("createProgramWithShaderCode")
-            vkProgram = vkDevice.createProgramWithShaderCode(content, 8);
+        var code = getKernel("nbody_shader");
+        console.log("createProgramWithShaderCode")
+        vkProgram = vkDevice.createProgramWithShaderCode(code, 8);
 
-            vkCurPosBuffer = vkDevice.createBuffer(vkBufferSize);
-            vkCurVelBuffer = vkDevice.createBuffer(vkBufferSize);
-            vkNxtPosBuffer = vkDevice.createBuffer(vkBufferSize);
-            vkNxtVelBuffer = vkDevice.createBuffer(vkBufferSize);
+        vkCurPosBuffer = vkDevice.createBuffer(vkBufferSize);
+        vkCurVelBuffer = vkDevice.createBuffer(vkBufferSize);
+        vkNxtPosBuffer = vkDevice.createBuffer(vkBufferSize);
+        vkNxtVelBuffer = vkDevice.createBuffer(vkBufferSize);
 
-            vkGlobalWorkSize[0] = NBODY;
-            vkLocalWorkSize[0] = 256;
+        vkGlobalWorkSize[0] = NBODY;
+        vkLocalWorkSize[0] = 256;
 
-            var vkNumBodies = vkDevice.createBuffer(Int32Array.BYTES_PER_ELEMENT);
-            var vkDeltaTime = vkDevice.createBuffer(Float32Array.BYTES_PER_ELEMENT);
-            var vkEpsSqr = vkDevice.createBuffer(Int32Array.BYTES_PER_ELEMENT);
-            var vkLocalPos = vkDevice.createBuffer(localWorkSize[0] * POS_ATTRIB_SIZE * Float32Array.BYTES_PER_ELEMENT);
+        var vkNumBodies = vkDevice.createBuffer(Int32Array.BYTES_PER_ELEMENT);
+        var vkDeltaTime = vkDevice.createBuffer(Float32Array.BYTES_PER_ELEMENT);
+        var vkEpsSqr = vkDevice.createBuffer(Int32Array.BYTES_PER_ELEMENT);
+        var vkLocalPos = vkDevice.createBuffer(localWorkSize[0] * POS_ATTRIB_SIZE * Float32Array.BYTES_PER_ELEMENT);
 
-            vkCurPosBuffer.fillBuffer(0, 0);
-            vkCurVelBuffer.fillBuffer(0, 0);
-            vkNxtPosBuffer.fillBuffer(0, 0);
-            vkNxtVelBuffer.fillBuffer(0, 0);
-            vkNumBodies.fillBuffer(0, 0);
-            vkDeltaTime.fillBuffer(0, 0);
-            vkEpsSqr.fillBuffer(0, 0);
-            vkLocalPos.fillBuffer(0, 0);
+        vkCurPosBuffer.fillBuffer(0, 0);
+        vkCurVelBuffer.fillBuffer(0, 0);
+        vkNxtPosBuffer.fillBuffer(0, 0);
+        vkNxtVelBuffer.fillBuffer(0, 0);
+        vkNumBodies.fillBuffer(0, 0);
+        vkDeltaTime.fillBuffer(0, 0);
+        vkEpsSqr.fillBuffer(0, 0);
+        vkLocalPos.fillBuffer(0, 0);
 
-            vkNumBodies.writeBuffer(0, Int32Array.BYTES_PER_ELEMENT, new Int32Array([NBODY]));
-            vkDeltaTime.writeBuffer(0, Float32Array.BYTES_PER_ELEMENT, new Float32Array([DT]));
-            vkEpsSqr.writeBuffer(0, Int32Array.BYTES_PER_ELEMENT, new Int32Array([EPSSQR]));
+        vkNumBodies.writeBuffer(0, Int32Array.BYTES_PER_ELEMENT, new Int32Array([NBODY]));
+        vkDeltaTime.writeBuffer(0, Float32Array.BYTES_PER_ELEMENT, new Float32Array([DT]));
+        vkEpsSqr.writeBuffer(0, Int32Array.BYTES_PER_ELEMENT, new Int32Array([EPSSQR]));
 
-            vkCurPosBuffer.writeBuffer(0, vkBufferSize, userData.curPos);
-            vkCurVelBuffer.writeBuffer(0, vkBufferSize, userData.curVel);
+        vkCurPosBuffer.writeBuffer(0, vkBufferSize, userData.curPos);
+        vkCurVelBuffer.writeBuffer(0, vkBufferSize, userData.curVel);
 
-            vkProgram.setArg(0, vkCurPosBuffer);
-            vkProgram.setArg(1, vkCurVelBuffer);
-            vkProgram.setArg(2, vkNumBodies);
-            vkProgram.setArg(3, vkDeltaTime);
-            vkProgram.setArg(4, vkEpsSqr);
-            vkProgram.setArg(5, vkLocalPos);
-            vkProgram.setArg(6, vkNxtPosBuffer);
-            vkProgram.setArg(7, vkNxtVelBuffer);
+        vkProgram.setArg(0, vkCurPosBuffer);
+        vkProgram.setArg(1, vkCurVelBuffer);
+        vkProgram.setArg(2, vkNumBodies);
+        vkProgram.setArg(3, vkDeltaTime);
+        vkProgram.setArg(4, vkEpsSqr);
+        vkProgram.setArg(5, vkLocalPos);
+        vkProgram.setArg(6, vkNxtPosBuffer);
+        vkProgram.setArg(7, vkNxtVelBuffer);
 
-            vkProgram.updateDescriptor();
+        vkProgram.updateDescriptor();
 
-            startTimer();
+        startTimer();
 
-            vkCommandQueue.begin(vkProgram);
-            // vkCommandQueue.dispatch(vkBufferSize/NBODY);
-            vkCommandQueue.dispatch(4);
-            vkCommandQueue.barrier();
-            vkCommandQueue.copyBuffer(vkNxtPosBuffer, vkCurPosBuffer, vkBufferSize);
-            vkCommandQueue.copyBuffer(vkNxtVelBuffer, vkCurVelBuffer, vkBufferSize);
-            vkCommandQueue.end();
+        vkCommandQueue.begin(vkProgram);
+        // vkCommandQueue.dispatch(vkBufferSize/NBODY);
+        vkCommandQueue.dispatch(4);
+        vkCommandQueue.barrier();
+        vkCommandQueue.copyBuffer(vkNxtPosBuffer, vkCurPosBuffer, vkBufferSize);
+        vkCommandQueue.copyBuffer(vkNxtVelBuffer, vkCurVelBuffer, vkBufferSize);
+        vkCommandQueue.end();
 
-            endTimer(3);
-        });
+        endTimer(3);
     } catch(e) {
         console.error("Nbody Demo Failed, Message: "+ e.message);
     }

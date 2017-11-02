@@ -39,7 +39,7 @@ var PHASE_DELTA			= 0.01;			// per cycle change to phase
 var NO_SIM              = 0;
 var JS_SIM              = 1;
 var CL_SIM              = 2;
-var VKC_SIM							= 3;
+var VKC_SIM             = 3;
 var MAX_SIM             = VKC_SIM;
 
 function UserData() {
@@ -56,10 +56,10 @@ function UserData() {
 
     this.gl             = null;         // handle for GL context
     this.cl             = null;         // handle for CL context
-		this.vkc						= null;					// handle for Vualkan Compute context
+    this.vkc            = null;         // handle for Vualkan Compute context
     this.glLoaded		= false;		// indicates completion of geometry initialization
     this.clLoaded		= false;		// indicates completion of buffer initialization
-		this.vkcLoaded 	= false;		// indicates completion of Vulkan Compute initialization
+    this.vkcLoaded      = false;		// indicates completion of Vulkan Compute initialization
     this.clSimMode      = NO_SIM;       // toggles between simulation modes
     this.fpsSampler     = null;         // FPS sampler
     this.simSampler     = null;         // Sim time sampler
@@ -88,7 +88,7 @@ function onLoad() {
 
     userData.gl  = InitGL();
     userData.cl  = InitCL();
-		userData.vkc = InitVKC();
+    userData.vkc = InitVKC();
 
     SetSimButton();
 
@@ -122,10 +122,10 @@ function ShowFLOPS() {
 function MainLoop() {
 
 	if(userData.glLoaded && !userData.clLoaded) {
-		InitCLBuffers(userData.cl, userData.gl);
-		userData.clLoaded = true;
-		InitVKCBuffers(userData.vkc);
-		userData.vkcLoaded = true;
+        InitCLBuffers(userData.cl, userData.gl);
+        userData.clLoaded = true;
+        InitVKCBuffers(userData.vkc);
+        userData.vkcLoaded = true;
 	}
 
     userData.drawSampler.endFrame();    // started at beginning of previous Draw()
@@ -133,14 +133,14 @@ function MainLoop() {
 
     userData.simSampler.startFrame();
     if(userData.clSimMode === JS_SIM) {
-            SimulateJS();
+        SimulateJS();
     }
     else if(userData.clSimMode === CL_SIM && userData.clLoaded) {
     	SimulateCL(userData.cl);
     }
-		else if(userData.clSimMode === VKC_SIM && userData.vkcLoaded) {
-			SimulateVKC(userData.vkc);
-		}
+    else if(userData.clSimMode === VKC_SIM && userData.vkcLoaded) {
+        SimulateVKC(userData.vkc);
+    }
     userData.simSampler.endFrame();
 
     userData.drawSampler.startFrame();
@@ -169,8 +169,8 @@ function SetSimButton() {
     case CL_SIM:
         b1.firstChild.nodeValue = "Toggle Sim Mode (now CL)";
         break;
-		case VKC_SIM:
-				b1.firstChild.nodeValue = "Toggle Sim Mode (now VK)";
-				break;
+    case VKC_SIM:
+        b1.firstChild.nodeValue = "Toggle Sim Mode (now VK)";
+        break;
     }
 }

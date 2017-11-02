@@ -8,7 +8,7 @@
  * copies and copies may only be made to the extent permitted
  * by a licensing agreement from ARM Limited.
  */
-layout(local_size_x=1024, local_size_y=1, local_size_z=1) in;
+layout(local_size_x=256, local_size_y=1, local_size_z=1) in;
 
 layout (binding=0, std430) buffer a2
 {
@@ -51,7 +51,7 @@ void main()
 
     uint tid = gl_LocalInvocationID.x;
     
-    uint localSize = 1024;
+    uint localSize = 256;
 
 //     // Number of tiles we need to iterate
     uint numTiles = numBodies / localSize;

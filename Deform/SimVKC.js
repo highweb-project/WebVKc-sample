@@ -100,8 +100,15 @@ function InitVKC() {
 
         vkcDevice = vk.createDevice();
         vkcCommandQueue = vkcDevice.createCommandQueue();
-	console.log("shader URL : " + document.URL + "deform.spv");
-        vkcProgram = vkcDevice.createProgram(document.URL + "deform.spv", 8);
+        // console.log("shader URL : " + document.URL + "deform.spv");
+        // vkcProgram = vkcDevice.createProgram(document.URL + "deform.spv", 8);
+        fetch('deform.comp').then(function(response) {
+            // console.log("response.status : " + response.status);
+            return response.text();
+        }).then(function(content) {
+            // console.log("content : " + content);
+            vkcProgram = vkcDevice.createProgramWithShaderCode(content, 8);
+        });
     } catch (e) {
         console.error("Deform Demo Failed ; Message: " + e.message);
     }

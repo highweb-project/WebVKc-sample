@@ -1,0 +1,66 @@
+#version 430
+layout (local_size_x=128, local_size_y=8) in;
+
+layout (binding=0, std430) buffer a1
+{
+	float dataInput[];
+};
+
+layout (binding=1, std430) buffer a2
+{
+	float dataOutput[];
+};
+
+layout (binding=2, std430) buffer a3
+{
+	uint width;
+};
+
+layout (binding=3, std430) buffer a4
+{
+	uint height;
+};
+
+void main()
+{
+    uint x = gl_GlobalInvocationID.x;
+    uint y = gl_GlobalInvocationID.y;
+
+    float Gx[4];
+    float Gy[4];
+
+    uint c = (x*4) + (y * width * 4);
+    uint k;
+
+    /* Read each texel component and calculate the filtered
+    value using neighbouring texel components */
+    if (x >= 1 && x < (width - 1) && y >= 1 && y < height - 1) {
+        float i00[4];
+        float i10[4];
+        float i20[4];
+        float i01[4];
+        float i11[4];
+        float i21[4];
+        float i02[4];
+        float i12[4];
+        float i22[4];
+        for (k=0; k<4; k++) {
+            i00[k] = float(dataInput[(c - 4 - 4 * width) + k]);
+            i10[k] = float(dataInput[(c - 4 * width) + k]);
+            i20[k] = float(dataInput[(c + 4 - 4 * width) + k]);
+            i01[k] = float(dataInput[(c - 4) + k]);
+            i11[k] = float(dataInput[c + k]);
+            i21[k] = float(dataInput[(c + 4) + k]);
+            i02[k] = float(dataInput[(c - 4 + 4 * width) + k]);
+            i12[k] = float(dataInput[(c + 4 * width) + k]);
+            i22[k] = float(dataInput[(c + 4 + 4 * width) + k]);
+
+            Gx[k] = i00[k] + 2 * i10[k] + i20[k] - i02[k] - 2 * i12[k] - i22[k];
+
+            Gy[k] = i00[k] - i20[k] + 2 * i01[k] - 2 * i21[k] + i02[k] - i22[k];
+
+            /* taking root of sums of squares of Gx and Gy */
+            dataOutput[c + k] = float(sqrt(pow(Gx[k], 2) + pow(Gy[k], 2)) / 2);
+        }
+    }
+}

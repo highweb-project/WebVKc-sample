@@ -1,0 +1,66 @@
+#version 430
+layout (binding=0, std430) buffer a1
+{
+  uint dst[];
+};
+
+layout (binding=1, std430) buffer a2
+{
+  uint length;
+};
+
+layout (binding=2, std430) buffer a3
+{
+  uint seed;
+};
+
+struct uint2
+{
+  uint x;
+  uint y;  
+};
+
+layout (local_size_x=1024) in;
+
+uint2 rand(uint2 seed, uint iterations) {
+  uint sum = 0;
+  uint delta = 0x9E3779B9;
+  uint k[4] = { 0xA341316C, 0xC8013EA4, 0xAD90777D, 0x7E95761E };
+
+  for (uint j=0; j < iterations; j++) {
+    sum += delta;
+    seed.x += ((seed.y << 4) + k[0]) & (seed.y + sum) & ((seed.y >> 5) + k[1]);
+    seed.y += ((seed.x << 4) + k[2]) & (seed.x + sum) & ((seed.x >> 5) + k[3]);
+  }
+
+  return seed;
+}
+
+uint ITER = 15;
+
+void main()
+{
+  uint x = gl_GlobalInvocationID.x;
+  if (x >= length) return;
+
+  uint2 rnd; // = (seed, seed << 3);
+  rnd.x = seed;
+  rnd.y = seed << 3;
+  rnd.x += x + (x << 11) + (x << 19);
+  rnd.y += x + (x << 9) + (x << 21);
+  rnd = rand(rnd, ITER);
+  uint r = rnd.x & 0xff;
+
+  float t = cos(seed/31.4f)/2.0f + 0.5f;
+  float baseAlpha = (rnd.x & 0xff00) >> 8;
+  baseAlpha = mix(baseAlpha, max(baseAlpha-32.0f, 0.0f), t);
+  float diffAlpha = (dst[x] & 0xff) / 4.0f;
+  float targetAlpha = clamp(baseAlpha+diffAlpha, 0.0f, 255.0f);
+  float alpha = mix(baseAlpha, targetAlpha, t);
+
+  uint sr = uint(r);
+  uint sa = uint(alpha);
+
+  // r, g, b, a
+  dst[x] = sr | sr << 8 | sr << 16 | sa << 24;
+}

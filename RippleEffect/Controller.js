@@ -188,6 +188,7 @@ function runFilter() {
 
 function showResults() {
     var delta = Math.max(1, tEnd - tStart);
+    // console.log("delta : " + delta);
     var fps = Math.floor(1000 / delta);
 
     document.getElementById("msec").firstChild.nodeValue = fps + " fps";

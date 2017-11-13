@@ -56,7 +56,7 @@ function initVK() {
             vkcProgram.updateDescriptor();
 
             vkcCommandQueue.begin(vkcProgram);
-            vkcCommandQueue.dispatch(10, 25);
+            vkcCommandQueue.dispatch(480, 800);
             vkcCommandQueue.barrier();
             vkcCommandQueue.end();
         });

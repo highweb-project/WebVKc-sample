@@ -106,7 +106,7 @@ function InitVK() {
 
         vkCommandQueue.begin(vkProgram);
         // vkCommandQueue.dispatch(vkBufferSize/NBODY);
-        vkCommandQueue.dispatch(4);
+        vkCommandQueue.dispatch(16);
         vkCommandQueue.barrier();
         vkCommandQueue.copyBuffer(vkNxtPosBuffer, vkCurPosBuffer, vkBufferSize);
         vkCommandQueue.copyBuffer(vkNxtVelBuffer, vkCurVelBuffer, vkBufferSize);

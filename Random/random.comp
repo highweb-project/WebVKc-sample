@@ -20,7 +20,7 @@ struct uint2
   uint y;  
 };
 
-layout (local_size_x=1024) in;
+layout (local_size_x=256) in;
 
 uint2 rand(uint2 seed, uint iterations) {
   uint sum = 0;

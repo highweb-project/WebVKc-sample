@@ -192,7 +192,7 @@ __kernel void clRandom1D(__global uchar4* dst,
               vkcProgram.updateDescriptor();
 
               vkcCommandQueue.begin(vkcProgram);
-              vkcCommandQueue.dispatch(512/2);
+              vkcCommandQueue.dispatch(1024);
               vkcCommandQueue.barrier();
               vkcCommandQueue.end();
 

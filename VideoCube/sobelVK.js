@@ -101,7 +101,7 @@ function sobelVK(vk, inputCanvas, outputCanvas, inputContext, outputContext) {
             vkcLocalWorkSize = new Int32Array([vkcBlockSizeX, vkcBlockSizeY]);
 
             vkcCommandQueue.begin(vkcProgram);
-            vkcCommandQueue.dispatch(1, 16);
+            vkcCommandQueue.dispatch(128, 128);
             vkcCommandQueue.barrier();
             vkcCommandQueue.end();
         }
